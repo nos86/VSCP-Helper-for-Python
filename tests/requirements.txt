@@ -1,2 +1,1 @@
-autobahn
-twisted
+ws4py
