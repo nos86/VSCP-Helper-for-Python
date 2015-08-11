@@ -1,31 +1,30 @@
 import unittest
-import cherrypy
-from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
-from ws4py.websocket import EchoWebSocket
+from server import TestServer
+from vscphelper.websocket import websocket, answer
+from vscphelper import VSCPConstant as const
+from time import sleep
 
-cherrypy.config.update({'server.socket_port': 9000})
-WebSocketPlugin(cherrypy.engine).subscribe()
-cherrypy.tools.websocket = WebSocketTool()
-
-class Root(object):
-    @cherrypy.expose
-    def index(self):
-        return 'some HTML with a websocket javascript connection'
-
-    @cherrypy.expose
-    def ws(self):
-        # you can access the class instance through
-        handler = cherrypy.request.ws_handler
-
-cherrypy.quickstart(Root(), '/', config={'/ws': {'tools.websocket.on': True,
-                                                 'tools.websocket.handler_cls': EchoWebSocket}})
-
-class websocketTests(unittest.case):
+class websocketTests(unittest.TestCase):
     
     def setUp(self):
+        self.server = TestServer(port=8080)
+
+    def test_timeout(self):
+        pass
+
+    def test_send(self):
+        pass
+
+    def test_authentication(self):
+        pass
+
+    def test_receive(self):
         pass
     
     def tearDown(self):
-        pass
+        self.server.shutdown()
+        
 
     
+if __name__=="__main__":
+    unittest.main()
