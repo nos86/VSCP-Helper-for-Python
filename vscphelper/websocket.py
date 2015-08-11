@@ -1,9 +1,8 @@
 from ws4py.client.threadedclient import WebSocketClient
 from hashlib import md5
-import string
-from exception import VSCPException, VSCPNoException
+from .exception import VSCPException, VSCPNoException
 from time import sleep
-import VSCPConstant as constant
+from . import VSCPConstant as constant
 import socket
 import signal
 
@@ -18,10 +17,13 @@ class answer:
 		'7': constant.VSCP_ERROR_NOT_AUTHORIZED
 	}
 	def __init__(self, message):
-		self.message = str(message)
-		self.msg = string.split(str(message), ';')
+            try:
+                self.message = message.data
+                self.msg = self.message.split(';')
+            except AttributeError as err:
+                raise ValueError("Expected object with ws4py.messaging.Message class") from err
 	def isPositiveAnswer(self):
-		return self.msg[0]=="+"
+            return self.msg[0]=="+"
 	def isFailed(self):
 		return self.msg[0]=="-"
 	def getType(self):
@@ -31,6 +33,15 @@ class answer:
 			return "Command"
 		else:
 			return "unknown"
+	def isValid(self):
+            if self.msg[0] == "+" and len(self.msg)>1:
+                return True
+            elif self.msg[0] == "-" and len(self.msg)==3:
+                return True
+            elif self.msg[0]=="E" and len(self.msg)==2 :
+                return len(self.msg[1].split(','))>=7
+            else:
+                return False
 	def getErrorMessage(self):
 		if self.msg[1] in self.errors.keys():
 			return constant.error_description[errors[self.msg[1]]]
@@ -42,13 +53,16 @@ class answer:
 		else:
 			message = "Undefined error"
 		return message + " (" + str(self.message)+")"
+
 	def getErrorCode(self):
-		if self.msg[1] in self.errors.keys():
-			return self.errors[self.msg[1]]
-		else:
-			return constant.VSCP_ERROR_ERROR
-			
-class websocket(WebSocketClient): 	
+            if self.message[0]=="+":
+                return constant.VSCP_ERROR_SUCCESS
+            elif self.msg[1] in self.errors.keys():
+                return self.errors[self.msg[1]]
+            else:
+                return constant.VSCP_ERROR_ERROR
+
+class websocket(WebSocketClient):
 	def __init__(self, hostname='localhost', port=8080, debug = False, timeout=1, eventCallback=None):
 		self.setTimeout(timeout)
 		self.debugMessage = debug
@@ -61,7 +75,7 @@ class websocket(WebSocketClient):
 		try:
 			super(websocket, self).__init__("ws://"+str(hostname)+":"+str(port))
 			self.connect()
-		except socket.error, err:
+		except socket.error as err:
 			raise VSCPException(constant.VSCP_ERROR_COMMUNICATION, str(err))
 	def setDebugOption(self, status):
 		self.debugMessage = status
@@ -70,7 +84,7 @@ class websocket(WebSocketClient):
 			self.timeout = timeout
 		else:
 			raise ValueError("Timeout must be greater than zero")
-		
+
 	def send(self, msg):
 		try:
 			signal.signal(signal.SIGALRM, self.__timeout)
@@ -83,19 +97,19 @@ class websocket(WebSocketClient):
 			if self.answer.isFailed():
 				raise VSCPException(self.answer.getErrorCode(), self.answer.getFullErrorMessage())
 			return self.answer
-		except socket.error, err:
-			raise VSCPException(constant.VSCP_ERROR_COMMUNICATION, str(err))	
-		
+		except socket.error as err:
+			raise VSCPException(constant.VSCP_ERROR_COMMUNICATION, str(err))
+
 	def __timeout(self,a,b):
 		""" Internal function used to raise the timeout exception
 		in case answer from websocket is not provited within maximum time
 		"""
 		raise VSCPException(constant.VSCP_ERROR_TIMEOUT, "Timeout occured during connection establishing")
-		
+
 	def opened(self):
 		self.connected = True
 		if self.debugMessage:
-			print("Websocket opened with success")	
+			print("Websocket opened with success")
 	def closed(self, code, reason=None):
 		self.connected = False
 		if self.debugMessage:
@@ -113,7 +127,7 @@ class websocket(WebSocketClient):
 			self.eventCallback(obj)
 		else:
 			raise VSCPException(constant.VSCP_ERROR_NOT_SUPPORTED, "I can't understand last incoming message :"+obj.message)
-		
-		
+
+
 if __name__ == "__main__":
 	pass
