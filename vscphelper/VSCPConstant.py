@@ -148,7 +148,6 @@ VSCP_ERROR_COMMUNICATION =   37      # Some kind of communication error
 VSCP_ERROR_USER =            38      # Login error user name
 VSCP_ERROR_PASSWORD  =       39      # Login error password
 VSCP_ERROR_CONNECTION =      40      # Could not connect   
-VSCP_ERROR_INVALID_HANDLE =  41      # The handle is not valid
 VSCP_ERROR_OPERATION_FAILED =42      # Operation failed for some reason
 
 VSCP_ERROR_NOT_AUTHORIZED =  43 	 #User is not authorized
@@ -159,39 +158,38 @@ VSCP_ERROR_VAR_NOT_FOUND =   46      #Variable is not found
 error_description = {
     VSCP_ERROR_SUCCESS:         "All is OK",
     VSCP_ERROR_ERROR:           "Error",
-    VSCP_ERROR_CHANNEL:         "Invalid channel",
-    VSCP_ERROR_FIFO_EMPTY:      "FIFO is empty",
-    VSCP_ERROR_FIFO_FULL:       "FIFO is full",
-    VSCP_ERROR_FIFO_SIZE:       "FIFO size error",
-    VSCP_ERROR_FIFO_WAIT:       "FIFO error",   
-    VSCP_ERROR_GENERIC:         "Generic error",
-    VSCP_ERROR_HARDWARE:        "Hardware error",
-    VSCP_ERROR_INIT_FAIL:       "Initialization failed",
-    VSCP_ERROR_INIT_MISSING:    "Mission initialization",
-    VSCP_ERROR_INIT_READY:      "Initialization is not finished",
+    VSCP_ERROR_CHANNEL:         "Invalid channel",#not used
+    VSCP_ERROR_FIFO_EMPTY:      "FIFO is empty",#not used
+    VSCP_ERROR_FIFO_FULL:       "FIFO is full",#not used
+    VSCP_ERROR_FIFO_SIZE:       "FIFO size error",#not used
+    VSCP_ERROR_FIFO_WAIT:       "FIFO error",   #not used
+    VSCP_ERROR_GENERIC:         "Generic error",#not used
+    VSCP_ERROR_HARDWARE:        "Hardware error",#not used
+    VSCP_ERROR_INIT_FAIL:       "Initialization failed",#not used
+    VSCP_ERROR_INIT_MISSING:    "Mission initialization",#not used
+    VSCP_ERROR_INIT_READY:      "Initialization is not finished",#not used
     VSCP_ERROR_NOT_SUPPORTED:   "Not supported",
-    VSCP_ERROR_OVERRUN:         "Overrun",
-    VSCP_ERROR_RCV_EMPTY:       "Receive buffer empty",
-    VSCP_ERROR_REGISTER:        "Register value error",
+    VSCP_ERROR_OVERRUN:         "Overrun",#not used
+    VSCP_ERROR_RCV_EMPTY:       "Receive buffer empty",#not used
+    VSCP_ERROR_REGISTER:        "Register value error",#not used
     VSCP_ERROR_TRM_FULL:        "Transmit buffer full",
-    VSCP_ERROR_LIBRARY:         "Unable to load library",
-    VSCP_ERROR_PROCADDRESS:     "Unable get library proc. address",
-    VSCP_ERROR_ONLY_ONE_INSTANCE: "Only one instance allowed",
-    VSCP_ERROR_SUB_DRIVER:      "Problem with sub driver call",
-    VSCP_ERROR_TIMEOUT:         "Time-out",
-    VSCP_ERROR_NOT_OPEN:        "The device is not open.",
-    VSCP_ERROR_PARAMETER:       "A parameter is invalid.",
-    VSCP_ERROR_MEMORY:          "Memory exhausted.",
-    VSCP_ERROR_INTERNAL:        "Some kind of internal program error",
-    VSCP_ERROR_COMMUNICATION:   "Some kind of communication error",
-    VSCP_ERROR_USER:            "Login error user name",
+    VSCP_ERROR_LIBRARY:         "Unable to load library",#not used
+    VSCP_ERROR_PROCADDRESS:     "Unable get library proc. address",#not used
+    VSCP_ERROR_ONLY_ONE_INSTANCE: "Only one instance allowed",#not used
+    VSCP_ERROR_SUB_DRIVER:      "Problem with sub driver call",#not used
+    VSCP_ERROR_TIMEOUT:         "Time-out",#not used
+    VSCP_ERROR_NOT_OPEN:        "The device is not open.",#not used
+    VSCP_ERROR_PARAMETER:       "A parameter is invalid.",#not used
+    VSCP_ERROR_MEMORY:          "Memory exhausted.",#not used
+    VSCP_ERROR_INTERNAL:        "Some kind of internal program error",#not used
+    VSCP_ERROR_COMMUNICATION:   "Some kind of communication error",#not used
+    VSCP_ERROR_USER:            "Login error user name",#not used
     VSCP_ERROR_PASSWORD:        "Login error password",
     VSCP_ERROR_CONNECTION:      "Could not connect   ",
-    VSCP_ERROR_INVALID_HANDLE:  "The handle is not valid",
     VSCP_ERROR_OPERATION_FAILED:"Operation failed for some reason",
     
     VSCP_ERROR_NOT_AUTHORIZED:  "User is not authorized",
     VSCP_ERROR_SYNTAX:          "Invalid syntax",
     VSCP_ERROR_DEFINED_VAR:     "Variable is already defined",
-    VSCP_ERROR_VAR_NOT_FOUND:   "Variable is not found"
+    VSCP_ERROR_VAR_NOT_FOUND:   "Variable is not found" 
 }

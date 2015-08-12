@@ -1,3 +1,29 @@
+###############################################################################
+#
+# The MIT License (MIT)
+#
+# Copyright (c) Musumeci Salvatore
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+###############################################################################
+
 from ws4py.client.threadedclient import WebSocketClient
 from hashlib import md5
 from .exception import VSCPException, VSCPNoException
@@ -17,13 +43,16 @@ class answer:
 		'7': constant.VSCP_ERROR_NOT_AUTHORIZED
 	}
 	def __init__(self, message):
-            try:
-                self.message = message.data
-                self.msg = self.message.split(';')
-            except AttributeError as err:
-                raise ValueError("Expected object with ws4py.messaging.Message class") from err
+		try:
+			self.message = message.data
+			self.msg = self.message.split(';')
+		except AttributeError as err:
+			raise ValueError("Expected object with ws4py.messaging.Message class") #from err
 	def isPositiveAnswer(self):
-            return self.msg[0]=="+"
+		if self.msg[0]=="+" or self.msg[0]=="E":
+			return constant.VSCP_ERROR_SUCCESS
+		else:
+			return constant.VSCP_ERROR_ERROR
 	def isFailed(self):
 		return self.msg[0]=="-"
 	def getType(self):
@@ -34,14 +63,14 @@ class answer:
 		else:
 			return "unknown"
 	def isValid(self):
-            if self.msg[0] == "+" and len(self.msg)>1:
-                return True
-            elif self.msg[0] == "-" and len(self.msg)==3:
-                return True
-            elif self.msg[0]=="E" and len(self.msg)==2 :
-                return len(self.msg[1].split(','))>=7
-            else:
-                return False
+		if self.msg[0] == "+" and len(self.msg)>1:
+			return True
+		elif self.msg[0] == "-" and len(self.msg)==3:
+			return True
+		elif self.msg[0]=="E" and len(self.msg)==2 :
+			return len(self.msg[1].split(','))>=7
+		else:
+			return False
 	def getErrorMessage(self):
 		if self.msg[1] in self.errors.keys():
 			return constant.error_description[errors[self.msg[1]]]
@@ -55,12 +84,12 @@ class answer:
 		return message + " (" + str(self.message)+")"
 
 	def getErrorCode(self):
-            if self.message[0]=="+":
-                return constant.VSCP_ERROR_SUCCESS
-            elif self.msg[1] in self.errors.keys():
-                return self.errors[self.msg[1]]
-            else:
-                return constant.VSCP_ERROR_ERROR
+		if self.msg[0]=="+" or self.msg[0]=="E":
+			return constant.VSCP_ERROR_SUCCESS
+		elif self.msg[1] in self.errors.keys():
+			return self.errors[self.msg[1]]
+		else:
+			return constant.VSCP_ERROR_ERROR
 
 class websocket(WebSocketClient):
 	def __init__(self, hostname='localhost', port=8080, debug = False, timeout=1, eventCallback=None):

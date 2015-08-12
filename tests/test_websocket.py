@@ -1,5 +1,5 @@
 import unittest
-from server import TestServer
+from tests.server import TestServer
 from vscphelper.websocket import websocket, answer
 from vscphelper import VSCPConstant as const
 from time import sleep

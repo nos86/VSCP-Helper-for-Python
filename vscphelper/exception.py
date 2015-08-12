@@ -1,3 +1,4 @@
+import vscphelper.VSCPConstant as constant
 
 class VSCPException(Exception):
 	"""Raised when an error with VSCP happens
@@ -7,9 +8,15 @@ class VSCPException(Exception):
 		message - string that describe the error
 	"""
 	
-	def __init__(self, errorCode, message):
+	def __init__(self, errorCode, message=None):
 		self.code = errorCode
-		self.message = message
+		if message:
+			self.message = message
+		else:
+			if errorCode in constant.error_description.keys():
+				self.message = constant.error_description[errorCode]
+			else:
+				self.message = ""
 	
 	def __str__(self):
 		return self.message
