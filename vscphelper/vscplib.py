@@ -25,12 +25,16 @@
 ###############################################################################
 
 from vscphelper.websocket import websocket 
-from vscphelper.exception import VSCPException, VSCPNoException 
+from vscphelper.exception import VSCPException 
 from time import sleep
 import vscphelper.VSCPConstant as constant
 import socket
 import signal
 import collections
+import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class vscpEvent:
 	def __init__(self, head, vscp_class, vscp_type, obid, timestamp, GUID, data=[]):
@@ -43,13 +47,15 @@ class vscpEvent:
 			guid	string: Global Unique IDentifier
 			data	int[8]:	Data of message (variable length up to 8)
 		"""
-		self.head = head
-		self.vscp_class = vscp_class
-		self.vscp_type = vscp_type
-		self.obid = obid
-		self.timestamp = timestamp
-		self.guid = GUID
-		self.data = data
+		self.head = int(head)
+		self.vscp_class = int(vscp_class)
+		self.vscp_type = int(vscp_type)
+		self.obid = int(obid)
+		self.timestamp = int(timestamp)
+		self.guid = str(GUID)
+		self.data = []
+		for i in range(0,len(data)):
+			self.data.append(int(data[i]))
 	def getHead(self):
 		return self.head
 	def getClass(self):
@@ -62,6 +68,10 @@ class vscpEvent:
 		return self.guid
 	def getTimestamp(self, ):
 		return self.timestamp
+	def getUTCDateTime(self, format="%d-%m-%Y %H:%M:%S"):
+		return datetime.datetime.utcfromtimestamp(int(self.timestamp)).strftime(format)
+	def getLocalDateTime(self, format="%d-%m-%Y %H:%M:%S"):
+		return datetime.datetime.fromtimestamp(int(self.timestamp)).strftime(format)
 	def getDataLength(self):
 		return len(self.data)
 	def getData(self, ):
@@ -82,7 +92,7 @@ class vscpEvent:
 		temp = str(answer.msg[1]).split(",")
 		data = []
 		if len(temp)>5:
-			for i in range(5, len(temp)):
+			for i in range(6, len(temp)):
 				data.append(temp[i])
 		return cls(temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], data)
 
@@ -111,7 +121,10 @@ class vscp:
 		It can be changed anytime during a communication session.
 		Default value is 2 seconds.
 		"""
-		self.ws.setTimeout(timeout)
+		if timeout>0:
+			self.ws.setTimeout(timeout)
+		else:
+			raise ValueError("Timeout must be be greater than 0")
 	def isConnected(self):
 		"""Check if the session is active or not and returns:
 		VSCP_ERROR_SUCCESS if websocket is opened and user is authenticated
@@ -161,6 +174,7 @@ class vscp:
 		"""
 		if self.eventStreaming == False:
 			self.doCommand("CLOSE")
+			self.eventStreaming = False
 			
 	def noop(self):
 		"""This is a command that can be used for test purposes.

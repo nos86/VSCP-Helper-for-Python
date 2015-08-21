@@ -35,7 +35,7 @@ class websocketAnswerTests(unittest.TestCase):
         self.assertEqual(test.getErrorCode(), const.VSCP_ERROR_NOT_AUTHORIZED)
     
     def test_event(self):
-        test = answer(createAnswer("E;0,9,1,1,523627200,FF:FF:FF:FF:FF:FF:FF:FE:00:26:55:CA:00:06:00:00,0x00,0x01,0x02,0x03"))
+        test = answer(createAnswer("E;0,9,1,1,523627200,FF:FF:FF:FF:FF:FF:FF:FE:00:26:55:CA:00:06:00:00, 0,1,2, 3"))
         self.assertTrue(test.isValid())
         self.assertEqual(test.isPositiveAnswer(),const.VSCP_ERROR_SUCCESS)
         self.assertFalse(test.isFailed())
