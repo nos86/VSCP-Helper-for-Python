@@ -1,11 +1,10 @@
 import unittest
 from tests.server import TestServer
-from vscphelper.exception import VSCPException
+from vscphelper.exception import *
 from vscphelper.websocket import websocket, answer
 from vscphelper import VSCPConstant as const
 from time import sleep
 import logging
-
 
 class createAnswer:
     def __init__(self, message):
@@ -21,13 +20,21 @@ class websocketFailedTests(unittest.TestCase):
     def test_noCallback(self, ):
         with self.assertRaises(ValueError):
             websocket()
-    #def test_ConnectionLost(self, ):
-    #    server = TestServer(port=8080)
-    #    ws = websocket(eventCallback = self.callback)
-    #    server.shutdown()
-    #    with self.assertRaises(VSCPException):
-    #        ws.send("C;NOOP")
 
+class websocketConnectionLost(unittest.TestCase):
+    def callback(self, message):
+        pass
+    
+    def test_ConnectionLost(self, ):
+        server = TestServer(port=8081)
+        ws = websocket(port=8081, eventCallback = self.callback, timeout=1)
+        server.shutdown()
+        with self.assertRaises(VSCPNoCommException):
+            ws.send("C;NOOP")
+        sleep(ws.timeout+0.1)         
+        ws.close()
+        
+        
 class websocketTests(unittest.TestCase):
     def callback(self, message):
         self.message = message
@@ -55,11 +62,11 @@ class websocketTests(unittest.TestCase):
         self.message = None
         self.ws.received_message(createAnswer("E;0,9,1,1,523627200,FF:FF:FF:FF:FF:FF:FF:FE:00:26:55:CA:00:06:00:00,0,1,2,3"))
         self.assertIsInstance(self.message, answer)
-        
     def tearDown(self):
         self.ws.close()
         self.server.shutdown()
-    
+
+            
 if __name__=="__main__":
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()

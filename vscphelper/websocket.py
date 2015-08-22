@@ -26,7 +26,7 @@
 
 from ws4py.client.threadedclient import WebSocketClient
 from hashlib import md5
-from .exception import VSCPException
+from .exception import *
 from time import sleep
 from . import VSCPConstant as constant
 import socket
@@ -95,7 +95,7 @@ class answer:
 			return constant.VSCP_ERROR_ERROR
 
 class websocket(WebSocketClient):
-	def __init__(self, hostname='localhost', port=8080, timeout=1, eventCallback=None):
+	def __init__(self, hostname='localhost', port=8080, timeout=2, eventCallback=None):
 		self.setTimeout(timeout)
 		self.connected = False
 		self.seed = None
@@ -118,19 +118,20 @@ class websocket(WebSocketClient):
 	def send(self, msg):
 		try:
 			signal.signal(signal.SIGALRM, self.__timeout)
-			signal.alarm(self.timeout) #set the time-out
 			self.answer = None
-			super(websocket, self).send(str(msg))
+			if self.connected:
+				signal.alarm(self.timeout) #set the time-out
+				super(websocket, self).send(str(msg), False)
+			else:
+				raise VSCPNoCommException("Websocket is closed")
 			while(self.answer == None):
 				sleep(0.01)
 			signal.alarm(0) #switch-off the time-out alarm
 			if self.answer.isFailed():
 				raise VSCPException(self.answer.getErrorCode(), self.answer.getFullErrorMessage())
 			return self.answer
-		except AttributeError as err:
-			raise VSCPException(constant.VSCP_ERROR_COMMUNICATION, str(err))
 		except socket.error as err:
-			raise VSCPException(constant.VSCP_ERROR_COMMUNICATION, str(err))
+			raise VSCPNoCommException(str(err))
 
 	def __timeout(self,a,b):
 		""" Internal function used to raise the timeout exception

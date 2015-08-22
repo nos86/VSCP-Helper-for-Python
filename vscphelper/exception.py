@@ -46,3 +46,7 @@ class VSCPException(Exception):
 	
 	def __str__(self):
 		return self.message
+
+class VSCPNoCommException(VSCPException):
+	def __init__(self, message=None):
+		super(VSCPNoCommException, self).__init__(constant.VSCP_ERROR_COMMUNICATION, message)
