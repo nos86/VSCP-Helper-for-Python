@@ -10,16 +10,11 @@ class createAnswer:
         self.is_binary = False
         self.data = message
 
-class vscplibEventHackingTests(unittest.TestCase):
-    def setUp(self):
-        pass
-    
-    def test_prova(self, ):
-        pass
-    
-    
-    def tearDown(self):
-        pass
+class vscplibEventMalformedTests(unittest.TestCase):
+    def test_createEventFromMalformedAnswer(self):
+        with self.assertRaises(ValueError):
+            event.fromAnswer("abcdef")
+            
 
 class vscplibEventDataFromFieldsTests(unittest.TestCase):
     def setUp(self):
@@ -89,29 +84,7 @@ class vscplibEventDataFromAnswerTests(unittest.TestCase):
         self.assertEqual(self.event.data, [0,1,2,3])
     def test_stringify(self):
         self.assertEqual(str(self.event), "E;0,9,1,2,523627200,"+self.GUID+",0,1,2,3")
-class vscplibFunctionalTests(unittest.TestCase):
-    def setup(self, ):
-        self.server = TestServer(port=8080)
-        self.client = vscp()
-        self.server.send("^+;AUTH1")
-        self.server.send("+;AUTH0;d002c278b35c152eed9ee2f475a561f1")
-    
-    def test_seedNotSent(self, ):
-        #self.assert vscp()
-        pass
-        
-    
-    def teardown(self, ):
-        self.server.shutdown()
-    
-    
-    
 
-
-class vscplibEventFunctionTests(unittest.TestCase):
-    pass
-    
-    
 if __name__ == '__main__':
     unittest.main()
     

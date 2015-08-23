@@ -23,19 +23,22 @@ class TestWebSocket(WebSocket):
             self.send(self.response[0], message.is_binary)
             self.response = self.response[1:]
 
+    def opened(self):
+        logger.info("Server is opened")
         
     def closed(self, code, reason=None):
         self.connected = False
-        logger.info("WebSocket closed")
+        logger.info("Server is closed")
 
 class TestServer:
-    def __init__(self, hostname='127.0.0.1', port=8080):
+    def __init__(self, hostname='127.0.0.1', port=8080, welcomeMessage = None):
         self.server = make_server(hostname,\
                              port,\
                              server_class=WSGIServer,\
                              handler_class=WebSocketWSGIRequestHandler,\
                              app=WebSocketWSGIApplication(handler_cls=TestWebSocket)\
                              )
+        self.server.welcomeMessage = welcomeMessage
         self.server.initialize_websockets_manager()
         self.thread = threading.Thread(target=self.server.serve_forever)
         self.thread.start()

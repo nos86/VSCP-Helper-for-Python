@@ -24,14 +24,15 @@
 #
 ###############################################################################
 
-from vscphelper.websocket import websocket 
-from vscphelper.exception import VSCPException 
+from vscphelper import websocket
+from vscphelper.exception import * 
 from time import sleep
 import vscphelper.VSCPConstant as constant
 import socket
 import signal
 import collections
 import datetime
+from hashlib import md5
 import logging
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,8 @@ class vscpEvent:
 	
 	@classmethod
 	def fromAnswer(cls, answer):
+		if not isinstance(answer, websocket.answer):
+			raise ValueError("Answer is not a vscphelper.websocket.answer object")
 		if answer.getType()!="Event":
 			raise ValueError("Impossible to init a vscpEvent using an answer that is not an Event one")
 		temp = str(answer.msg[1]).split(",")
@@ -95,7 +98,6 @@ class vscpEvent:
 			for i in range(6, len(temp)):
 				data.append(temp[i])
 		return cls(temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], data)
-
 		
 class vscp:
 	def __init__(self, hostname='127.0.0.1', port='8080', user='admin', password='secret', domain='mydomain.com', timeout=2):
@@ -103,14 +105,17 @@ class vscp:
 		self.eventStreaming = False
 		self.authenticated = False
 		self.timeout = timeout
-		self.ws = websocket(hostname=hostname, port=port, eventCallback = self.__eventCallback, debug=True) #Open websocket
-		self.passwordHash = md5(user+":"+domain+":"+password).hexdigest()
+		self.ws = websocket.websocket(hostname=hostname, port=port, eventCallback = self.__eventCallback) #Open websocket
+		self.passwordHash = md5((user+":"+domain+":"+password).encode('utf-8')).hexdigest()
 		self.user = user
-		sleep(0.5) #Wait for authentication seed
+		for i in range(0,50):
+			sleep(0.01)
+			if self.ws.seed is not None:
+				break
 		if self.ws.seed == None:
-			raise VSCPException(constant.VSCP_ERROR_COMMUNICATION, "No AUTH0 is received by websocket")
+			raise VSCPNoCommException("No AUTH0 is received by websocket")
 		else:
-			key = md5(self.user+":"+self.passwordHash+":"+seed).hexdigest()
+			key = md5((self.user+":"+self.passwordHash+":"+seed).encode('utf-8')).hexdigest()
 			answer = self.doCommand("AUTH", [user, key])
 			if answer.isFailed():
 				raise VSCPException(constant.VSCP_ERROR_NOT_AUTHORIZED, answer.getFullErrorMessage())

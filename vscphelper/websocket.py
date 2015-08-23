@@ -47,7 +47,7 @@ class answer:
 	}
 	def __init__(self, message):
 		try:
-			self.message = message.data
+			self.message = message.data if isinstance(message.data, str) else message.data.decode('utf-8')
 			self.msg = self.message.split(';')
 		except AttributeError as err:
 			raise ValueError("Expected object with ws4py.messaging.Message class") #from err
