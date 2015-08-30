@@ -107,7 +107,9 @@ class websocket(WebSocketClient):
 			super(websocket, self).__init__("ws://"+str(hostname)+":"+str(port))
 			self.connect()
 		except socket.error as err:
-			raise VSCPException(constant.VSCP_ERROR_COMMUNICATION, str(err))
+			raise VSCPNoCommException(str(err)) #from None
+		except ConnectionError as err:
+			raise VSCPNoCommException(str(err)) #from None
 		
 	def setTimeout(self, timeout):
 		if timeout > 0:

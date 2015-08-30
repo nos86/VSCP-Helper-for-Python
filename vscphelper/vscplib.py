@@ -106,7 +106,6 @@ class vscp:
 		self.authenticated = False
 		self.timeout = timeout
 		self.ws = websocket.websocket(hostname=hostname, port=port, eventCallback = self.__eventCallback) #Open websocket
-		self.passwordHash = md5((user+":"+domain+":"+password).encode('utf-8')).hexdigest()
 		self.user = user
 		for i in range(0,50):
 			sleep(0.01)
@@ -115,11 +114,16 @@ class vscp:
 		if self.ws.seed == None:
 			raise VSCPNoCommException("No AUTH0 is received by websocket")
 		else:
-			key = md5((self.user+":"+self.passwordHash+":"+seed).encode('utf-8')).hexdigest()
-			answer = self.doCommand("AUTH", [user, key])
-			if answer.isFailed():
+			key = self.calculateKey(user, password, domain)
+			answer = self.doCommand(";".join(["AUTH", self.user, key]))
+			if answer != constant.VSCP_ERROR_SUCCESS:
 				raise VSCPException(constant.VSCP_ERROR_NOT_AUTHORIZED, answer.getFullErrorMessage())
 			self.authenticated = True
+	
+	def calculateKey(self, user, password, domain):
+		passwordHash = md5((user+":"+domain+":"+password).encode('utf-8')).hexdigest()
+		return md5((user+":"+passwordHash+":"+self.ws.seed).encode('utf-8')).hexdigest()
+	
 	def setResponseTimeOut(self, timeout=2):
 		"""This is the timeout in seconds used when checking for replies after commands has been sent to the server.
 		The value is also used multiplied with three as a connection timeout.
