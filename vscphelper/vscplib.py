@@ -56,7 +56,10 @@ class vscpEvent:
 		self.guid = str(GUID)
 		self.data = []
 		for i in range(0,len(data)):
-			self.data.append(int(data[i]))
+			try:
+				self.data.append(int(data[i]))
+			except ValueError:
+				self.data.append(int(data[i],16))
 	def getHead(self):
 		return self.head
 	def getClass(self):
@@ -202,7 +205,32 @@ class vscp:
 		self.doCommand("NOOP")
 	
 	def sendEvent(self, event):
-		pass
+		"""Send an event over the communication link.
+		The response from the server will be checked for +;EVENT
+		
+		Return value should be:
+		VSCP_ERROR_SUCCESS if the VSCP daemon respond with +OK after it has received the command
+		VSCP_ERROR_ERROR if not (-OK) or no response before the timeout expires.
+		VSCP_ERROR_CONNECTION is returned if the communication channel is not open.
+		"""
+		if not isinstance(event, vscpEvent):
+			raise ValueError("event must be a vscpEvent object")
+		if not (self.isConnected()==constant.VSCP_ERROR_SUCCESS):
+			return constant.VSCP_ERROR_CONNECTION
+		try:
+			answer = self.ws.send(str(event))
+			return answer.isPositiveAnswer()
+		except VSCPException:
+			return constant.VSCP_ERROR_ERROR
+
+	def sendSimpleEvent(self, vscp_class=2, vscp_type=1, vscp_data=[]):
+		"""Fast Method to send an event.
+		It will create the event object and it'll send it over CAN
+		
+		Expected return / exceptions are the same of sendEvent method
+		"""
+		event = vscpEvent(0, vscp_class, vscp_type, 0, 0, "", vscp_data)
+		return self.sendEvent(event)
 	
 	def receiveEvent(self):
 		"""Receive one VSCP event from the remote VSCP daemon.
