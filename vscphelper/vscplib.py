@@ -104,8 +104,8 @@ class vscp:
 		self.queue = collections.deque()
 		self.eventStreaming = False
 		self.authenticated = False
-		self.timeout = timeout
 		self.ws = websocket.websocket(hostname=hostname, port=port, eventCallback = self.__eventCallback) #Open websocket
+		self.ws.setTimeout(timeout)
 		self.user = user
 		for i in range(0,50):
 			sleep(0.01)
@@ -115,9 +115,10 @@ class vscp:
 			raise VSCPNoCommException("No AUTH0 is received by websocket")
 		else:
 			key = self.calculateKey(user, password, domain)
-			answer = self.doCommand(";".join(["AUTH", self.user, key]))
+			command = ";".join(["AUTH", self.user, key])
+			answer  = self.ws.send("C;"+command).isPositiveAnswer()
 			if answer != constant.VSCP_ERROR_SUCCESS:
-				raise VSCPException(constant.VSCP_ERROR_NOT_AUTHORIZED, answer.getFullErrorMessage())
+				raise VSCPException(constant.VSCP_ERROR_NOT_AUTHORIZED)
 			self.authenticated = True
 	
 	def calculateKey(self, user, password, domain):
@@ -152,10 +153,14 @@ class vscp:
 		VSCP_ERROR_ERROR if not (-OK) or no response before the timeout expires.
 		VSCP_ERROR_CONNECTION is returned if the communication channel is not open.
 		"""
-		if self.isConnected()==False:
+		if not (self.isConnected()==constant.VSCP_ERROR_SUCCESS):
 			return constant.VSCP_ERROR_CONNECTION
-		answer = self.ws.send("C;"+command)
-		return answer.isPositiveAnswer()
+		try:
+			answer = self.ws.send("C;"+command)
+			return answer.isPositiveAnswer()
+		except VSCPException:
+			return constant.VSCP_ERROR_ERROR
+
 	def clearDaemonEventQueue(self):
 		""" Clear the receiving side (to us) event queue on the VSCP daemon
 		VSCP_ERROR_SUCCESS if the VSCP daemon cleared the queue
@@ -181,7 +186,7 @@ class vscp:
 		VSCP_ERROR_ERROR on failure.
 		VSCP_ERROR_CONNECTION If the connection is closed.
 		"""
-		if self.eventStreaming == False:
+		if self.eventStreaming:
 			self.doCommand("CLOSE")
 			self.eventStreaming = False
 			
@@ -204,7 +209,7 @@ class vscp:
 		
 		Returns VSCPEvent object if available, otherwise None is returned
 		"""
-		if self.isDataAvailable>0:
+		if self.isDataAvailable():
 			return self.queue.pop()
 		else:
 			return None
@@ -213,25 +218,37 @@ class vscp:
 		
 		Returns number of events ready to be read
 		"""
-		return len(self.queue)
-	def blockingReceiveEvent(self):
+		return len(self.queue)>0
+	def blockingReceiveEvent(self, timeout = 2):
 		"""Blocking receive event.
 		
 		As soon as a new event is received, it will be returned to caller
 		
 		In case of connection is closed or user is not authenticated, VSCPException(VSCP_ERROR_CONNECTION) is raised
 		In case of ReceiveLoop is closed VSCPException(VSCP_ERROR_OPERATION_FAILED) is raised
+		In order to avoid infinite waiting, a timeout is foreseen. After this time without incoming message,
+		VSCPException(VSCP_ERROR_TIMEOUT) is raisen
 		"""
+		if not isinstance(timeout, int):
+			raise ValueError("Timeout must be a non-negative integer number")
+		if timeout < 0:
+			raise ValueError("Timeout must be a non-negative integer number")
 		if self.eventStreaming == False:
 			raise VSCPException(constant.VSCP_ERROR_OPERATION_FAILED)
-		while(self.isDataAvailable==0):
+		signal.signal(signal.SIGALRM, self.__errorOnTimeout)
+		signal.alarm(timeout)
+		while(self.isDataAvailable()==0):
 			if self.authenticated == False or self.ws.connected == False:
 				raise VSCPException(constant.VSCP_ERROR_CONNECTION)
 			sleep(0.1)
+		signal.alarm(0)
 		return self.receiveEvent()
 	
 	def setFilter(self):
 		pass
+	
+	def __errorOnTimeout(self, ):
+		raise VSCPException(constant.VSCP_ERROR_TIMEOUT)
 	
 	def __eventCallback(self, answer):
 		self.queue.appendleft(vscpEvent.fromAnswer(answer))

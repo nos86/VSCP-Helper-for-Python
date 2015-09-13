@@ -76,12 +76,12 @@ class answer:
 			return False
 	def getErrorMessage(self):
 		if self.msg[1] in self.errors.keys():
-			return constant.error_description[errors[self.msg[1]]]
+			return constant.error_description[self.errors[self.msg[1]]]
 		else:
 			return "Undefined error"
 	def getFullErrorMessage(self):
 		if self.msg[1] in self.errors.keys():
-			message =  constant.error_description[errors[self.msg[1]]]
+			message =  constant.error_description[self.errors[self.msg[1]]]
 		else:
 			message = "Undefined error"
 		return message + " (" + str(self.message)+")"
@@ -117,7 +117,7 @@ class websocket(WebSocketClient):
 		else:
 			raise ValueError("Timeout must be greater than zero")
 
-	def send(self, msg):
+	def send(self, msg, waitForResponse = True):
 		try:
 			signal.signal(signal.SIGALRM, self.__timeout)
 			self.answer = None
@@ -126,6 +126,9 @@ class websocket(WebSocketClient):
 				super(websocket, self).send(str(msg), False)
 			else:
 				raise VSCPNoCommException("Websocket is closed")
+			if waitForResponse == False:
+				signal.alarm(0)
+				return None
 			while(self.answer == None):
 				sleep(0.01)
 			signal.alarm(0) #switch-off the time-out alarm
