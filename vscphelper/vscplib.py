@@ -110,6 +110,7 @@ class vscp:
 		self.ws = websocket.websocket(hostname=hostname, port=port, eventCallback = self.__eventCallback) #Open websocket
 		self.ws.setTimeout(timeout)
 		self.user = user
+		self.handler = None
 		for i in range(0,50):
 			sleep(0.01)
 			if self.ws.seed is not None:
@@ -127,6 +128,9 @@ class vscp:
 	def calculateKey(self, user, password, domain):
 		passwordHash = md5((user+":"+domain+":"+password).encode('utf-8')).hexdigest()
 		return md5((user+":"+passwordHash+":"+self.ws.seed).encode('utf-8')).hexdigest()
+	
+	def setHandler(self, fnct):
+		self.handler = fnct
 	
 	def setResponseTimeOut(self, timeout=2):
 		"""This is the timeout in seconds used when checking for replies after commands has been sent to the server.
@@ -280,4 +284,6 @@ class vscp:
 	
 	def __eventCallback(self, answer):
 		self.queue.appendleft(vscpEvent.fromAnswer(answer))
+		if not self.handler is None:
+			self.handler()
 		

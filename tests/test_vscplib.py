@@ -23,6 +23,9 @@ class vscplibFunctionalTests(unittest.TestCase):
                                  welcomeMessage = "+;AUTH0;d002c278b35c152eed9ee2f475a561f1|+;AUTH1")
         self.client = vscp(user='admin', password='secret', domain='mydomain.com')
         
+    def __receiveMessage(self):
+        self.receivedMessage = True
+    
     def test_checkAuthenticated(self, ):
         self.assertTrue(self.client.authenticated)
         
@@ -37,6 +40,16 @@ class vscplibFunctionalTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.client.setResponseTimeOut(0)
     
+    def test_setHandler(self):
+        self.assertIsNone(self.client.handler)
+        with self.assertRaises(ValueError):
+            self.client.setHandler("Malformed")
+        self.client.setHandler(self.receivedMessage)
+        event = "E;0,9,1,1,523627200,FF:FF:FF:FF:FF:FF:FF:FE:00:26:55:CA:00:06:00:00,0,1,2,3"
+        self.client.ws.send(event, False)
+        sleep(0.1)
+        self.assertTrue(self.receivedMessage)
+
     def test_doCommand(self, ):
         self.client.ws.send("^+;NOOP", False)
         self.assertEqual(self.client.isConnected(),
@@ -51,6 +64,24 @@ class vscplibFunctionalTests(unittest.TestCase):
                          constant.VSCP_ERROR_CONNECTION)
         self.client.ws.connected = True
     
+    def test_sendEvent(self, ):
+        event = vscpEvent(0, 2, 0, 0, 0, "", [1])
+        with self.assertRaises(ValueError):
+            self.client.sendEvent("Malformed Arg")
+        self.client.ws.connected = False
+        self.assertEqual(self.client.doCommand(),
+                         constant.VSCP_ERROR_CONNECTION)
+        self.client.ws.connected = True
+        self.client.ws.send("^+;EVENT", False)
+        self.assertEqual(self.client.isConnected(),
+                         constant.VSCP_ERROR_SUCCESS)
+        self.assertEqual(self.client.sendEvent(event),
+                         constant.VSCP_ERROR_SUCCESS)
+        self.client.ws.send("^-;2;Unkown command",False)
+        self.assertEqual(self.client.sendEvent(event),
+                         constant.VSCP_ERROR_ERROR)
+        
+        
     def test_ReceiveLoop(self, ):
         self.assertFalse(self.client.eventStreaming)
         self.client.ws.send("^+;OPEN|+;CLOSE", False)
