@@ -26,7 +26,7 @@
 
 from vscphelper import websocket
 from vscphelper.exception import * 
-from time import sleep
+from time import sleep, time
 import vscphelper.VSCPConstant as constant
 import socket
 import signal
@@ -38,7 +38,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class vscpEvent:
-	def __init__(self, head, vscp_class, vscp_type, obid, timestamp, GUID, data=[]):
+	def __init__(self,
+				 vscp_class,
+				 vscp_type,
+				 vscp_data=[],
+				 GUID='FF:FF:FF:FF:FF:FF:FF:FC:00:00:00:00:00:00:00:00',
+				 head=0,
+				 obid=0,
+				 timestamp=None):
 		""" Parameters are:
 			head
 			vscp_class int: VSCP Event Class
@@ -52,20 +59,25 @@ class vscpEvent:
 		self.vscp_class = int(vscp_class)
 		self.vscp_type = int(vscp_type)
 		self.obid = int(obid)
-		self.timestamp = int(timestamp)
+		if timestamp == None:
+			self.timestamp = int(time())
+		else:
+			self.timestamp = int(timestamp)
 		self.guid = str(GUID)
 		self.data = []
-		for i in range(0,len(data)):
+		for i in range(0,len(vscp_data)):
 			try:
-				self.data.append(int(data[i]))
+				self.data.append(int(vscp_data[i]))
 			except ValueError:
-				self.data.append(int(data[i],16))
+				self.data.append(int(vscp_data[i],16))
 	def getHead(self):
 		return self.head
 	def getClass(self):
 		return self.vscp_class
 	def getType(self, ):
 		return self.vscp_type
+	def getNodeId(self):
+		return int(self.guid[-2:],16)
 	def getObID(self, ):
 		return self.obid
 	def getGUID(self, ):
@@ -100,7 +112,13 @@ class vscpEvent:
 		if len(temp)>5:
 			for i in range(6, len(temp)):
 				data.append(temp[i])
-		return cls(temp[0], temp[1], temp[2], temp[3], temp[4], temp[5], data)
+		return cls(head = temp[0],
+				   vscp_class = temp[1],
+				   vscp_type = temp[2],
+				   obid = temp[3],
+				   timestamp = temp[4],
+				   GUID = temp[5],
+				   vscp_data = data)
 		
 class vscp:
 	def __init__(self, hostname='127.0.0.1', port='8080', user='admin', password='secret', domain='mydomain.com', timeout=2):
@@ -130,6 +148,8 @@ class vscp:
 		return md5((user+":"+passwordHash+":"+self.ws.seed).encode('utf-8')).hexdigest()
 	
 	def setHandler(self, fnct):
+		if callable(fnct) == False:
+			raise ValueError("argument must be a callable function")
 		self.handler = fnct
 	
 	def setResponseTimeOut(self, timeout=2):
@@ -227,7 +247,7 @@ class vscp:
 		except VSCPException:
 			return constant.VSCP_ERROR_ERROR
 
-	def sendSimpleEvent(self, vscp_class=2, vscp_type=1, vscp_data=[]):
+	def sendSimpleEvent(self, vscp_class=0, vscp_type=2, vscp_data=[1]):
 		"""Fast Method to send an event.
 		It will create the event object and it'll send it over CAN
 		

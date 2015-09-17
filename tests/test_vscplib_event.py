@@ -19,7 +19,13 @@ class vscplibEventMalformedTests(unittest.TestCase):
 class vscplibEventDataFromFieldsTests(unittest.TestCase):
     def setUp(self):
         self.GUID = "FF:FF:FF:FF:FF:FF:FF:FE:00:26:55:CA:00:06:00:00"
-        self.event = event(0, 9, 1, 2, 523627200,self.GUID, [0,1,2,3])
+        self.event = event(vscp_class = 9,
+                           vscp_type = 1,
+                           vscp_data = [0,1,2,3],
+                           timestamp = 523627200,
+                           GUID = self.GUID,
+                           obid = 2,
+                           head = 0)
     def test_checkHead(self):
         self.assertEqual(self.event.getHead(), 0)
         self.assertEqual(self.event.head, 0)
@@ -35,6 +41,8 @@ class vscplibEventDataFromFieldsTests(unittest.TestCase):
     def test_checkGUID(self):
         self.assertEqual(self.event.getGUID(), self.GUID)
         self.assertEqual(self.event.guid, self.GUID)
+    def test_checkNodeID(self):
+        self.assertEqual(self.event.getNodeId(), int(self.GUID[-2:],16))
     def test_checkTimestamp(self):
         self.assertEqual(self.event.getTimestamp(), 523627200)
         self.assertEqual(self.event.timestamp, 523627200)

@@ -44,7 +44,7 @@ class vscplibFunctionalTests(unittest.TestCase):
         self.assertIsNone(self.client.handler)
         with self.assertRaises(ValueError):
             self.client.setHandler("Malformed")
-        self.client.setHandler(self.receivedMessage)
+        self.client.setHandler(self.__receiveMessage)
         event = "E;0,9,1,1,523627200,FF:FF:FF:FF:FF:FF:FF:FE:00:26:55:CA:00:06:00:00,0,1,2,3"
         self.client.ws.send(event, False)
         sleep(0.1)
@@ -65,7 +65,9 @@ class vscplibFunctionalTests(unittest.TestCase):
         self.client.ws.connected = True
     
     def test_sendEvent(self, ):
-        event = vscpEvent(0, 2, 0, 0, 0, "", [1])
+        event = vscpEvent(vscp_class = 2,
+                          vscp_type = 0,
+                          vscp_data = [1])
         with self.assertRaises(ValueError):
             self.client.sendEvent("Malformed Arg")
         self.client.ws.connected = False
