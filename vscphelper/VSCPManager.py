@@ -1,5 +1,6 @@
 from vscphelper.vscplib import *
 import vscphelper.VSCPConstant as constant
+from vscphelper.VSCPUtils import *
 from vscphelper.exception import *
 import logging
 import time
@@ -7,6 +8,111 @@ import signal
 
 logger = logging.getLogger(__name__)
 
+class DecisionMatrixRow(object):
+    """Contains all information about decision matrix row of a node
+    It can be used to
+    -   save information coming from remote node
+    -   create a decision matrix row for your virtual node
+    
+    Variables are:
+    -   oaddr: origin address
+    -   flags: flags byte (raw data)
+    -   class_mask: mask for class (already completed with additional bit written in flags byte)
+    -   class_filter: filter for class (already completed with additional bit written in flags byte)
+    -   type_mask: mask for type
+    -   type_filter: filter for type
+    -   action: it can be a number (in case of copy of remote node) or a callable function (in case of
+                of virtual node) that will be executed when incoming event will match with criteria
+    -   action_parameter: it can be a number (in case of copy of remote node) or a set of parameters to
+                pass to action function when action is executed
+    """
+    logger = logging.getLogger(__name__+'.DecisionMatrixRow')
+    def __init__(self,
+                 oaddr,
+                 flags,
+                 class_mask,
+                 class_filter,
+                 type_mask,
+                 type_filter,
+                 action,
+                 action_parameter):
+        self.logger.debug("New DMRow: {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}".format(oaddr,
+                                                                                    flags,
+                                                                                    class_mask,
+                                                                                    class_filter,
+                                                                                    type_mask,
+                                                                                    type_filter,
+                                                                                    action,
+                                                                                    action_parameter))
+        if checkRangeOfInt(oaddr, "Originating Address"):
+            self.oaddr = oaddr
+        if checkRangeOfInt(flags, "Flags"):
+            self.flags = flags
+        if checkRangeOfInt(class_mask, "Class Mask"):
+            self.class_mask = class_mask + 256 * ((self.flags & 0x02)>0)
+        if checkRangeOfInt(class_filter, "Class Filter"):
+            self.class_filter = class_filter + 256 * ((self.flags & 0x01)>0)
+        if checkRangeOfInt(type_mask, "Type Mask"):
+            self.type_mask = type_mask
+        if checkRangeOfInt(type_filter, "Type Filter"):
+            self.type_filter = type_filter
+        if callable(action):
+            self.action = action
+            self.action_parameter = action_parameter
+        elif checkRangeOfInt(action, "Action") and checkRangeOfInt(action_parameter, "Action Parameter"):
+            self.action = action
+            self.action_parameter = action_parameter
+        
+    def isEnabled(self, ):
+        """Return True if this row is enabled
+        """
+        return (self.flags & 0x80) > 0
+    def isAddressMatchRequired(self, ):
+        """Return True if originating address is checked to trigger DM
+        """
+        return (self.flags & 0x40) > 0
+    def isAddressHardCoded(self, ):
+        """Return True if originating address is hard-coded expected
+        """
+        return (self.flags & 0x20) > 0
+    def matchZoneRequired(self, ):
+        """Return True if zone is checked to trigger DM
+        """
+        return (self.flags & 0x10) > 0
+    def matchSubzoneRequired(self, ):
+        """Return True if subzone is checked to trigger DM
+        """
+        return (self.flags & 0x08) > 0
+    
+    @classmethod
+    def makeFlagsByte(cls,
+                      isEnabled,
+                      checkOriginAddress,
+                      isHardCodedAddress,
+                      matchZone,
+                      matchSubzone,
+                      class_mask,
+                      class_filter
+                      ):
+        """ Make flags byte starting from single information:
+        -   isEnabled: Row is enabled if set to True
+        -   checkOriginAddress: oaddr should match nickname of event (=True) or don't care (=False)
+        -   isHardCoded: Indicates hard-coded originating address if set to True
+        -   matchZone: match Zone to trigger DM if set to True
+        -   matchSubzone: match Sub-Zone to trigger DM if set to True
+        -   class_mask: entire class mask in order to extract bit 8
+        -   class_filter: entire class filter in order to extract bit 8
+        """
+        result = 0 + \
+                0x80 * isEnabled + \
+                0x40 * checkOriginAddress + \
+                0x20 * isHardCodedAddress + \
+                0x10 * matchZone + \
+                0x08 * matchSubzone + \
+                0x02 * (class_mask>255) + \
+                0x01 * (class_filter>255)
+        return result
+    
 class Node:
     """This class contains and handles all information about node
     """
@@ -23,6 +129,7 @@ class Node:
         self.mdf = None
         self.guid = None
         self.regs = {}
+        self.DM = None
         
     def receiveEvent(self, event):
         if event.vscp_class == constant.VSCP_CLASS1_INFORMATION:
@@ -33,6 +140,14 @@ class Node:
                 self.lastPing = time.time()
             elif event.vscp_type == constant.VSCP_TYPE_PROTOCOL_RW_RESPONSE:
                 self.regs[event.getData()[0]] = event.getData()[1]
+            elif event.vscp_Type == constant.VSCP_TYPE_PROTOCOL_MATRIX_INFO_RESPONSE:
+                self.DM = {'size': event.getData()[0],
+                           'offset': event.getData()[1],
+                           'rows': {}}
+                if len(event.getData())>2:
+                    self.DM['offsetPageStart'] = event.getData()[3]*255 + event.getData()[2]
+                else:
+                    self.DM['offsetPageStart'] = 0
     
     def readRegister(self, address, cache = False, timeout=2):
         """Return the value of register at [address] location
@@ -57,8 +172,7 @@ class Node:
             signal.alarm(0)
             return self.regs[address]
         except VSCPException:
-            return None
-    
+            return None   
     def writeRegister(self, address, value, timeout=2):
         """Return True if value is correctly written
         if timeout is elapsed, False is returned
@@ -85,6 +199,26 @@ class Node:
             return self.regs[address]==value
         except VSCPException:
             return False
+    
+    def downloadDM(self, timeout = 2, cached = False):
+        self.DM = None
+        self.vscp.sendSimpleEvent(vscp_class=constant.VSCP_CLASS1_PROTOCOL,
+                                  vscp_type=constant.VSCP_TYPE_PROTOCOL_GET_MATRIX_INFO,
+                                  vscp_data=[self.nodeId])
+        signal.signal(signal.SIGALRM, self.__timeout)
+        signal.alarm(timeout)
+        try:
+            while(self.DM == None):
+                time.sleep(0.02)
+            signal.alarm(0)
+            for i in range(self.DM['size']):
+                self.DM['rows'][i] = self.getRowOfDM(i)
+            
+        except:
+            return constant.VSCP_ERROR_ERROR
+    
+    def getRowOfDM(self, row, cached = False, timeout=2):
+        pass
     
         
     def __timeout(self, a, b):
