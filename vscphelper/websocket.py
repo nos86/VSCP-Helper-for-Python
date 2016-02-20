@@ -25,12 +25,12 @@
 ###############################################################################
 
 from ws4py.client.threadedclient import WebSocketClient
+from eventlet.timeout import Timeout
 from hashlib import md5
 from .exception import *
 from time import sleep
 from . import VSCPConstant as constant
 import socket
-import signal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -119,19 +119,18 @@ class websocket(WebSocketClient):
 
 	def send(self, msg, waitForResponse = True):
 		try:
-			signal.signal(signal.SIGALRM, self.__timeout)
 			self.answer = None
 			if self.connected:
-				signal.alarm(self.timeout) #set the time-out
+				timeout = Timeout(self.timeout, self.__timeout)
 				super(websocket, self).send(str(msg), False)
 			else:
 				raise VSCPNoCommException("Websocket is closed")
 			if waitForResponse == False:
-				signal.alarm(0)
+				timeout.cancel()
 				return None
 			while(self.answer == None):
 				sleep(0.01)
-			signal.alarm(0) #switch-off the time-out alarm
+			timeout.cancel() #switch-off the time-out alarm
 			if self.answer.isFailed():
 				raise VSCPException(self.answer.getErrorCode(), self.answer.getFullErrorMessage())
 			return self.answer

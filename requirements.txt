@@ -1,0 +1,4 @@
+eventlet==0.18.4
+greenlet==0.4.9
+requests==2.9.1
+ws4py==0.3.4

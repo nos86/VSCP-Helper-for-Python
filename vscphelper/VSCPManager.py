@@ -2,9 +2,11 @@ from vscphelper.vscplib import *
 import vscphelper.VSCPConstant as constant
 from vscphelper.VSCPUtils import *
 from vscphelper.exception import *
+from eventlet.timeout import Timeout
 import logging
 import time
 import signal
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +151,17 @@ class Node:
                 else:
                     self.DM['offsetPageStart'] = 0
     
+    def getMDF(self, flush_cache=False, timeout=2):
+        if flush_cache:
+            for i in range(0,32):
+                self.regs[224+i] = None
+        if self.regs[224] is None: #MDF must be downloaded
+            for i in range(0,32):
+                self.readRegister(224+i, False ,timeout)
+                #time.sleep(0.05)
+        time.sleep(0.1)
+        return ''.join([chr(self.regs[224+k]) for k in range(0,31)])
+
     def readRegister(self, address, cache = False, timeout=2):
         """Return the value of register at [address] location
         if timeout is elapsed, NoneValue is returned
@@ -165,11 +178,10 @@ class Node:
                                   vscp_type = constant.VSCP_TYPE_PROTOCOL_READ_REGISTER,
                                   vscp_data = [self.id, address])
         try:
-            signal.signal(signal.SIGALRM, self.__timeout)
-            signal.alarm(timeout)
+            timer = Timeout(timeout, self.__timeout)
             while(self.regs[address]==None):
                 time.sleep(0.02)
-            signal.alarm(0)
+            timer.cancel()
             return self.regs[address]
         except VSCPException:
             return None   
@@ -189,13 +201,12 @@ class Node:
         self.vscp.sendSimpleEvent(vscp_class = constant.VSCP_CLASS1_PROTOCOL,
                                   vscp_type = constant.VSCP_TYPE_PROTOCOL_WRITE_REGISTER,
                                   vscp_data = [self.id, address, value])
-        try:
-            signal.signal(signal.SIGALRM, self.__timeout)
-            signal.alarm(timeout)
+        try:      
+            timer = Timeout(timeout, self.__timeout)
             self.regs[address] = None
             while(self.regs[address]==None):
                 time.sleep(0.02)
-            signal.alarm(0)
+            timer.cancel()
             return self.regs[address]==value
         except VSCPException:
             return False
@@ -205,12 +216,11 @@ class Node:
         self.vscp.sendSimpleEvent(vscp_class=constant.VSCP_CLASS1_PROTOCOL,
                                   vscp_type=constant.VSCP_TYPE_PROTOCOL_GET_MATRIX_INFO,
                                   vscp_data=[self.nodeId])
-        signal.signal(signal.SIGALRM, self.__timeout)
-        signal.alarm(timeout)
+        timer = Timeout(timeout, self.__timeout)
         try:
             while(self.DM == None):
                 time.sleep(0.02)
-            signal.alarm(0)
+            timer.cancel()
             for i in range(self.DM['size']):
                 self.DM['rows'][i] = self.getRowOfDM(i)
             
@@ -270,7 +280,7 @@ class Manager:
         return None
     
     def getNumberOfNode(self, ):
-        return self.nodes.count
+        return len(self.nodes)
     
         
     

@@ -26,6 +26,7 @@
 
 from vscphelper import websocket
 from vscphelper.exception import * 
+from eventlet.timeout import Timeout
 from time import sleep, time
 import vscphelper.VSCPConstant as constant
 import socket
@@ -253,7 +254,7 @@ class vscp:
 		
 		Expected return / exceptions are the same of sendEvent method
 		"""
-		event = vscpEvent(0, vscp_class, vscp_type, 0, 0, "", vscp_data)
+		event = vscpEvent(vscp_class, vscp_type, vscp_data)
 		return self.sendEvent(event)
 	
 	def receiveEvent(self):
@@ -287,13 +288,12 @@ class vscp:
 			raise ValueError("Timeout must be a non-negative integer number")
 		if self.eventStreaming == False:
 			raise VSCPException(constant.VSCP_ERROR_OPERATION_FAILED)
-		signal.signal(signal.SIGALRM, self.__errorOnTimeout)
-		signal.alarm(timeout)
+		timer = Timeout(timeout, self.__errorOnTimeout)
 		while(self.isDataAvailable()==0):
 			if self.authenticated == False or self.ws.connected == False:
 				raise VSCPException(constant.VSCP_ERROR_CONNECTION)
 			sleep(0.1)
-		signal.alarm(0)
+		timer.cancel()
 		return self.receiveEvent()
 	
 	def setFilter(self):
